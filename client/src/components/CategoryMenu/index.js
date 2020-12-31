@@ -6,27 +6,35 @@ import { QUERY_CATEGORIES } from "../../utils/queries";
 // custom hook
 import { useStoreContext } from "../../utils/GlobalState";
 
+import { idbPromise } from '../../utils/helpers';
+
 function CategoryMenu() {
-  // const { data: categoryData } = useQuery(QUERY_CATEGORIES);
-  // const categories = categoryData?.categories || [];
 
   const [state, dispatch] = useStoreContext();
   // Because we only need the categories array out of our global state,
   // we simply destructure it out of state so we can use it to provide to our returning JSX.
   const { categories } = state;
-  const { data: categoryData } = useQuery(QUERY_CATEGORIES);
+  const { loading, data: categoryData } = useQuery(QUERY_CATEGORIES);
 
   // Necessary because useQuery is asynchronous
   useEffect(() => {
-    // if categoryData exists or has changed from the response of useQuery, then run dispatch()
     if (categoryData) {
-      // execute our dispatch function with our action object indicating the type of action and the data to set our state for categories to
       dispatch({
         type: UPDATE_CATEGORIES,
         categories: categoryData.categories
       });
+      categoryData.categories.forEach(category => {
+        idbPromise('categories', 'put', category);
+      });
+    } else if (!loading) {
+      idbPromise('categories', 'get').then(categories => {
+        dispatch({
+          type: UPDATE_CATEGORIES,
+          categories: categories
+        });
+      });
     }
-  }, [categoryData, dispatch]);
+  }, [categoryData, loading, dispatch]);
 
   const handleClick = id => {
     dispatch({
